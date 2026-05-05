@@ -1,0 +1,3 @@
+__pycache__/
+*.pyc
+progress_note_module/templates.db

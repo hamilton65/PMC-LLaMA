@@ -6,10 +6,10 @@ from fastapi import FastAPI, HTTPException
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field
 
-from serve.ingestion import optimize_ingestion
-from serve.note_assembler import assemble_note
-from serve.section_generators import build_section_prompts, deterministic_sections, parse_snapshot_context
-from serve.template_db import (
+from progress_note_module.ingestion import optimize_ingestion
+from progress_note_module.note_assembler import assemble_note
+from progress_note_module.section_generators import build_section_prompts, deterministic_sections, parse_snapshot_context
+from progress_note_module.template_db import (
     compose_template_body_from_sections,
     create_template,
     default_template_sections,
@@ -20,7 +20,7 @@ from serve.template_db import (
     list_templates,
     update_template,
 )
-from serve.template_contract import compile_template_contract, validate_rendered_note
+from progress_note_module.template_contract import compile_template_contract, validate_rendered_note
 
 app = FastAPI(title="PMC-LLaMA Test UI")
 

@@ -378,6 +378,40 @@ class PMCLLaMA:
 
         return text
 
+    @modal.method()
+    def generate_raw(self, prompt: str, max_new_tokens: int = 350, temperature: float = 0.2) -> str:
+        import torch
+
+        prompt = (prompt or "").strip()
+        if not prompt:
+            return ""
+
+        inputs = self.tokenizer(
+            prompt,
+            return_tensors="pt",
+            truncation=True,
+            max_length=3500,
+        ).to("cuda")
+
+        with torch.no_grad():
+            output_ids = self.model.generate(
+                **inputs,
+                max_new_tokens=max_new_tokens,
+                temperature=temperature,
+                do_sample=temperature > 0,
+                top_p=0.9,
+                repetition_penalty=1.1,
+                no_repeat_ngram_size=5,
+                pad_token_id=self.tokenizer.eos_token_id,
+                eos_token_id=self.tokenizer.eos_token_id,
+            )
+
+        new_tokens = output_ids[0][inputs["input_ids"].shape[1]:]
+        text = self.tokenizer.decode(new_tokens, skip_special_tokens=True).strip()
+        text = re.sub(r"(?is)<[^>]+>", "", text)
+        text = re.sub(r"\n{3,}", "\n\n", text).strip()
+        return text
+
 
 # ---------------------------------------------------------------------------
 # FastAPI web endpoint — this is the URL your frontend calls
@@ -395,6 +429,16 @@ class NoteRequest(BaseModel):
 
 class NoteResponse(BaseModel):
     progress_note: str
+
+
+class RawRequest(BaseModel):
+    prompt: str
+    max_new_tokens: int = 350
+    temperature: float = 0.2
+
+
+class RawResponse(BaseModel):
+    text: str
 
 
 def _extract(pattern: str, text: str, default: str = "Not provided") -> str:
@@ -932,6 +976,18 @@ def generate_note_v2(request: NoteRequest) -> NoteResponse:
             provider_notes=request.provider_notes,
         )
     )
+
+
+@app.function()
+@modal.fastapi_endpoint(method="POST", label="generate-raw", docs=True)
+def generate_raw(request: RawRequest) -> RawResponse:
+    model = PMCLLaMA()
+    txt = model.generate_raw.remote(
+        prompt=request.prompt,
+        max_new_tokens=request.max_new_tokens,
+        temperature=request.temperature,
+    )
+    return RawResponse(text=txt)
 
 
 # ---------------------------------------------------------------------------
